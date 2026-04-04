@@ -1,0 +1,355 @@
+/* 🎨 IBES Premium Web Form Theme */
+.applicant-workflow-view {
+  background-color: #f1f5f9;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 2.5rem 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.view-header {
+  max-width: 900px;
+  margin: 0 auto 1.5rem;
+  width: 100%;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--ibes-navy);
+  font-weight: 600;
+  font-family: var(--font-display);
+  transition: var(--transition);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.back-btn:hover {
+  background: var(--ibes-navy);
+  color: white;
+  border-color: var(--ibes-navy);
+}
+
+.workflow-container {
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 🏢 Premium Form Layout */
+.premium-form-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+/* 🖼️ Premium Logo Bar (Hidden as we moved logo to header) */
+.premium-logo-container {
+  display: none;
+}
+
+.premium-logo-img {
+  display: none;
+}
+
+.form-header-premium {
+  background: linear-gradient(135deg, var(--ibes-navy), var(--ibes-navy-dark));
+  padding: 3rem 2.5rem;
+  color: white;
+  position: relative;
+  border-bottom: 4px solid var(--ibes-red);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-text-content {
+  flex: 1;
+}
+
+.header-logo-container img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+}
+
+.form-header-premium h1 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+.form-header-premium p {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+/* 📝 Form Sections */
+.form-section {
+  padding: 2.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.section-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  color: var(--ibes-navy-dark);
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-header p {
+  color: var(--ibes-text-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* 🔲 Form Grids & Inputs */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  column-gap: 2rem;
+  row-gap: 1.5rem;
+}
+
+.form-grid.single-col {
+  grid-template-columns: 1fr;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.form-group label .req {
+  color: var(--ibes-error);
+  margin-left: 4px;
+}
+
+.form-help-text {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: -4px;
+}
+
+/* Custom Textarea Override */
+textarea.ibes-input {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+}
+
+/* 📁 Dropzone File Uploads */
+.premium-file-upload {
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: all 0.2s;
+}
+
+.premium-file-upload:hover,
+.premium-file-upload:focus-within {
+  border-color: var(--ibes-navy);
+  background-color: #f0f4f8;
+}
+
+.upload-button-wrapper label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ibes-navy);
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+
+.upload-button-wrapper label:hover {
+  border-color: var(--ibes-navy);
+  background: #eff6ff;
+}
+
+.upload-filename {
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 500;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 🔘 Checkboxes and Radios */
+.radio-options-grid {
+  display: flex;
+  gap: 1rem;
+}
+
+.premium-radio-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #334155;
+  background: white;
+  transition: all 0.2s;
+}
+
+.premium-radio-label:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.premium-radio-label:has(input:checked) {
+  border-color: var(--ibes-red);
+  background: var(--ibes-red-light);
+  color: var(--ibes-navy-dark);
+}
+
+.premium-radio-label input[type="radio"] {
+  accent-color: var(--ibes-navy);
+  width: 16px;
+  height: 16px;
+}
+
+/* 🚀 Actions Footer */
+.form-footer-actions {
+  padding: 2rem 2.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.action-buttons-group {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Clear button explicitly styled */
+.btn-clear {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid transparent;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-clear:hover {
+  background: #f1f5f9;
+  color: var(--ibes-error);
+}
+
+/* Submission Success State */
+.success-state-container {
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.success-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  background: var(--ibes-success);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 8px 20px rgba(27, 94, 32, 0.2);
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+  .form-header-premium {
+    padding: 2rem 1.5rem;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+  
+  .header-logo-container img {
+    height: 60px;
+  }
+  
+  .form-section {
+    padding: 1.5rem;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .radio-options-grid {
+    flex-direction: column;
+  }
+  
+  .form-footer-actions {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+  
+  .action-buttons-group {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .btn-premium {
+    width: 100%;
+  }
+}
