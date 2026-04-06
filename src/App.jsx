@@ -162,7 +162,7 @@ function App() {
       // 1. Notify Applicant
       if (applicantEmail) {
         emailPromises.push(
-          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notify-applicant`, {
+          fetch(`${import.meta.env.PROD ? '' : 'http://localhost:5000'}/api/notify-applicant`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -177,7 +177,7 @@ function App() {
 
       // 2. Notify Admin
       emailPromises.push(
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notify-admin-new`, {
+        fetch(`${import.meta.env.PROD ? '' : 'http://localhost:5000'}/api/notify-admin-new`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
