@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "nodemon server.js",
+    "server": "nodemon api/index.js",
     "full-portal": "concurrently \"npm run dev\" \"npm run server\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node api/index.js"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

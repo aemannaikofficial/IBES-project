@@ -183,6 +183,10 @@ app.post('/api/notify-admin-new', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[SERVER] IBES Notification Service running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[SERVER] IBES Notification Service running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
