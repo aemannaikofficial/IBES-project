@@ -42,7 +42,7 @@ const ProgrammeLeaderReview = ({ applications, setApplications, userRole, userNa
     setNotification(`📧 Processing your ${decision}...`);
 
     try {
-      const response = await fetch('http://localhost:5000/api/notify-admin', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notify-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
