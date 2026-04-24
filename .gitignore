@@ -12,10 +12,16 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (sensitive)
+# Environment variables (sensitive) — NEVER commit these
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.test
+
+# Backend API (contains secrets like SMTP keys, tokens)
+api/
 
 # Editor directories and files
 .vscode/*
@@ -27,3 +33,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary and Backup files
+*.bak
+*.txt
+
+# Private configuration
+src/config/userRegistry.js
