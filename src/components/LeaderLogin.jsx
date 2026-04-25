@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LockKey, User, SignIn, ArrowLeft } from '@phosphor-icons/react';
 import { validateAuth } from '../config/userRegistry';
 
-const LeaderLogin = ({ onLogin, setActiveView }) => {
+const LeaderLogin = ({ onLogin, setActiveView, leaders }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,7 +12,7 @@ const LeaderLogin = ({ onLogin, setActiveView }) => {
     setError('');
 
     // 🔥 Using centralized auth registry
-    const user = validateAuth('leader', email, password);
+    const user = validateAuth('leader', email, password, leaders);
 
     if (user) {
       onLogin('leader', user.name);

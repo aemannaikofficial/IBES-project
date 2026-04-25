@@ -13,8 +13,9 @@ import LandingPage from "./components/LandingPage";
 import ApplicationChoice from "./components/ApplicationChoice";
 import AdminLeaderManagement from "./components/AdminLeaderManagement";
 import AdminFormSummary from "./components/AdminFormSummary";
-import { LEADER_REGISTRY } from "./config/userRegistry";
-import { CaretLeft, Bell, CheckCircle, ChartBar, Signature, EnvelopeSimple, SignOut, HouseLine, UsersThree, FileText, UserCircle, List, X } from "@phosphor-icons/react";
+import { LEADER_REGISTRY, DEFAULT_PROGRAMMES } from "./config/userRegistry";
+import { CaretLeft, Bell, CheckCircle, ChartBar, Signature, EnvelopeSimple, SignOut, HouseLine, UsersThree, FileText, UserCircle, List, X, Briefcase } from "@phosphor-icons/react";
+import ProgrammesList from "./components/ProgrammesList";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -96,6 +97,8 @@ function App() {
     return [];
   });
 
+  const [verifyAppId, setVerifyAppId] = useState(null);
+
   const [leaders, setLeaders] = useState(() => {
     const savedLeaders = localStorage.getItem("ibes_leaders");
     if (savedLeaders) {
@@ -107,6 +110,18 @@ function App() {
   useEffect(() => {
     localStorage.setItem("ibes_leaders", JSON.stringify(leaders));
   }, [leaders]);
+
+  const [programmes, setProgrammes] = useState(() => {
+    const savedProgrammes = localStorage.getItem("ibes_programmes");
+    if (savedProgrammes) {
+      return JSON.parse(savedProgrammes);
+    }
+    return DEFAULT_PROGRAMMES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("ibes_programmes", JSON.stringify(programmes));
+  }, [programmes]);
 
   useEffect(() => {
     try {
@@ -196,7 +211,7 @@ function App() {
 
   // 🏛️ ADMIN Enterprise Layout Flag
   const isAdminConsole = isLoggedIn && userRole === 'admin' && 
-    ['dashboard', 'adminVerify', 'manageLeaders', 'leaderFormsSummary', 'tutorFormsSummary'].includes(activeView);
+    ['dashboard', 'adminVerify', 'manageLeaders', 'programmes', 'leaderFormsSummary', 'tutorFormsSummary'].includes(activeView);
 
   console.log("[DEBUG] App State:", { isLoggedIn, userRole, activeView, isAdminConsole, isMobile });
 
@@ -258,6 +273,13 @@ function App() {
                   <UsersThree size={20} color={activeView === 'manageLeaders' ? 'var(--ibes-red)' : 'currentColor'} weight={activeView === 'manageLeaders' ? 'fill' : 'regular'} /> Programme Leaders
                 </button>
 
+                <button 
+                  onClick={() => { setActiveView('programmes'); if(isMobile) setIsSidebarOpen(false); }} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: activeView === 'programmes' ? 'rgba(255,255,255,0.1)' : 'transparent', borderRadius: '10px', border: 'none', color: activeView === 'programmes' ? 'white' : '#94a3b8', cursor: 'pointer', textAlign: 'left', fontWeight: activeView === 'programmes' ? '600' : '500', fontSize: '15px', transition: 'all 0.2s' }}
+                >
+                  <Briefcase size={20} color={activeView === 'programmes' ? 'var(--ibes-red)' : 'currentColor'} weight={activeView === 'programmes' ? 'fill' : 'regular'} /> Programmes
+                </button>
+
                 <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.05)', margin: '8px 0' }}></div>
 
                 <button 
@@ -317,8 +339,9 @@ function App() {
                 <div>
                   <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '24px', color: '#0f172a', fontWeight: '700' }}>
                     {activeView === 'dashboard' ? 'Overview' : 
-                     activeView === 'manageLeaders' ? 'Personnel' : 
-                     activeView === 'leaderFormsSummary' ? 'Leader Module Forms' :
+                      activeView === 'manageLeaders' ? 'Personnel' : 
+                      activeView === 'programmes' ? 'Programmes' : 
+                      activeView === 'leaderFormsSummary' ? 'Leader Module Forms' :
                      activeView === 'tutorFormsSummary' ? 'Tutor / Supervisor Forms' :
                      'Validation'}
                   </h1>
@@ -448,14 +471,18 @@ function App() {
                     setActiveView={setActiveView}
                     userRole={userRole}
                     initialTab="new"
+                    leaders={leaders}
+                    verifyAppId={verifyAppId}
+                    setVerifyAppId={setVerifyAppId}
                   />
                 </div>
               )}
 
               {/* Specific Form Summaries */}
-              {activeView === 'manageLeaders' && <AdminLeaderManagement leaders={leaders} setLeaders={setLeaders} />}
-              {activeView === 'leaderFormsSummary' && <AdminFormSummary applications={applications} type="Leader Module" />}
-              {activeView === 'tutorFormsSummary' && <AdminFormSummary applications={applications} type="Teacher Applicant" />}
+              {activeView === 'manageLeaders' && <AdminLeaderManagement leaders={leaders} setLeaders={setLeaders} programmes={programmes} />}
+              {activeView === 'programmes' && <ProgrammesList leaders={leaders} setLeaders={setLeaders} programmes={programmes} setProgrammes={setProgrammes} />}
+              {activeView === 'leaderFormsSummary' && <AdminFormSummary applications={applications} setApplications={setApplications} type="Leader Module" setActiveView={setActiveView} setVerifyAppId={setVerifyAppId} />}
+              {activeView === 'tutorFormsSummary' && <AdminFormSummary applications={applications} setApplications={setApplications} type="Teacher Applicant" setActiveView={setActiveView} setVerifyAppId={setVerifyAppId} />}
             </main>
           </div>
         </div>
@@ -476,7 +503,7 @@ function App() {
             <AdminLogin onLogin={handleLogin} setActiveView={setActiveView} />
           )}
 
-          {activeView === "applicantForm" && (
+          {(activeView === "applicantForm" || activeView === "generalTutorForm") && (
             <div className="applicant-workflow-view fade-in">
               <div className="workflow-container">
                 <div className="view-header">
@@ -485,7 +512,12 @@ function App() {
                   </button>
                 </div>
                 {applicantStep === 0 ? (
-                  <TeacherApplicantForm onSubmit={handleFormSubmit} />
+                  <TeacherApplicantForm 
+                    onSubmit={handleFormSubmit} 
+                    leaders={leaders} 
+                    isGeneral={activeView === "generalTutorForm"}
+                    programmes={programmes}
+                  />
                 ) : (
                   <>
                     <div className="premium-form-container fade-in" style={{ padding: '60px 40px', textAlign: 'center' }}>
@@ -513,7 +545,7 @@ function App() {
                   </button>
                 </div>
                 {applicantStep === 0 ? (
-                  <LeaderModuleForm onSubmit={handleFormSubmit} />
+                  <LeaderModuleForm onSubmit={handleFormSubmit} programmes={programmes} />
                 ) : (
                   <>
                     <div className="premium-form-container fade-in" style={{ padding: '60px 40px', textAlign: 'center' }}>
@@ -543,7 +575,7 @@ function App() {
                 handleLogout={handleLogout}
               />
             ) : (
-              <LeaderLogin onLogin={handleLogin} setActiveView={setActiveView} />
+              <LeaderLogin onLogin={handleLogin} setActiveView={setActiveView} leaders={leaders} />
             )
           )}
         </main>

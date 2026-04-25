@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
-import { ChartPie, HourglassMedium, XCircle, CheckCircle, ClipboardText, FileText, UserCircle, ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
+import { ChartPie, HourglassMedium, XCircle, CheckCircle, ClipboardText, FileText, UserCircle, ArrowRight, MagnifyingGlass, PencilSimple, DownloadSimple, Funnel } from "@phosphor-icons/react";
+import { generateTutorApprovalPDFs } from '../utils/pdfGenerator';
 
-const AdminFormSummary = ({ applications, type }) => {
+const AdminFormSummary = ({ applications, setApplications, type, setActiveView, setVerifyAppId }) => {
   const [activeFilter, setActiveFilter] = useState('all');
+  const [editingApp, setEditingApp] = useState(null);
   
-  const filteredApps = applications.filter(app => app.applicationType === type);
+  const filteredApps = applications.filter(app => {
+    if (type === "Teacher Applicant") {
+      return app.applicationType === "Teacher Applicant" || app.applicationType === "Teacher" || app.applicationType === "Teacher Applicant Form";
+    }
+    return app.applicationType === type;
+  });
+
+  const availableProgrammes = Array.from(new Set(applications.map(app => app.ibesprogrammes || app.ibesProgrammes).filter(Boolean)));
   
   const total = filteredApps.length;
   const pendingCount = filteredApps.filter(app => app.status === 'pending').length;
@@ -12,12 +21,20 @@ const AdminFormSummary = ({ applications, type }) => {
   const approvedCount = filteredApps.filter(app => app.status === 'approved').length;
 
   const displayApps = filteredApps.filter(app => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'pending') return app.status === 'pending';
-    if (activeFilter === 'rejected') return app.status === 'rejected';
-    if (activeFilter === 'approved') return app.status === 'approved';
-    return true;
+    return activeFilter === 'all' || app.status === activeFilter;
   });
+
+  const handleUpdateApp = (e) => {
+    e.preventDefault();
+    setApplications(prev => prev.map(a => a.id === editingApp.id ? editingApp : a));
+    setEditingApp(null);
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Are you sure you want to permanently delete this application?")) {
+      setApplications(prev => prev.filter(app => app.id !== id));
+    }
+  };
 
   const isLeader = type === "Leader Module";
 
@@ -114,6 +131,7 @@ const AdminFormSummary = ({ applications, type }) => {
 
       </div>
 
+
       {/* 📋 Detailed Breakdown Area */}
       <div className="fade-in" style={{ backgroundColor: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         <div style={{ padding: '24px 32px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
@@ -140,7 +158,7 @@ const AdminFormSummary = ({ applications, type }) => {
                   <th style={{ padding: '16px 32px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name / Profile</th>
                   <th style={{ padding: '16px 32px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Submission Date</th>
                   <th style={{ padding: '16px 32px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Status</th>
-                  <th style={{ padding: '16px 32px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>Identity</th>
+                  <th style={{ padding: '16px 32px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,8 +186,53 @@ const AdminFormSummary = ({ applications, type }) => {
                         {app.status}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 32px', textAlign: 'right', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
-                      ID: {app.id.toString().slice(-6)}
+                    <td style={{ padding: '16px 32px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                        {(app.applicationType === 'Teacher Applicant' || app.applicationType === 'Teacher' || app.applicationType === 'Teacher Applicant Form') && app.status === 'approved' && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await generateTutorApprovalPDFs(app, app.assignedLeader || "Programme Leader");
+                              } catch (err) {
+                                console.error("Admin on-demand PDF error:", err);
+                                alert("PDF generation failed. Check console.");
+                              }
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '6px',
+                              backgroundColor: 'var(--ibes-navy)', color: 'white',
+                              border: 'none', padding: '8px 14px', borderRadius: '8px',
+                              fontWeight: '600', fontSize: '13px', cursor: 'pointer'
+                            }}
+                            title="Download Approval PDFs"
+                          >
+                            <DownloadSimple size={16} weight="bold" /> Download PDFs
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => {
+                            if (setVerifyAppId && setActiveView) {
+                              setVerifyAppId(app.id);
+                              setActiveView('adminVerify');
+                            }
+                          }}
+                          style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          View
+                        </button>
+                        <button 
+                          onClick={() => setEditingApp({ ...app })}
+                          style={{ background: '#f0fdf4', border: '1px solid #dcfce3', color: '#059669', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(app.id)}
+                          style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -178,6 +241,48 @@ const AdminFormSummary = ({ applications, type }) => {
           </div>
         )}
       </div>
+
+      {/* 📝 Edit Modal Inline */}
+      {editingApp && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="fade-in" style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>Edit Application: {editingApp.fullName}</h3>
+              <button onClick={() => setEditingApp(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>×</button>
+            </div>
+            <form onSubmit={handleUpdateApp} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Full Name</label>
+                <input type="text" className="ibes-input" value={editingApp.fullName} onChange={(e) => setEditingApp({...editingApp, fullName: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Programme</label>
+                <select className="ibes-input" value={editingApp.ibesprogrammes || editingApp.ibesProgrammes} onChange={(e) => setEditingApp({...editingApp, ibesprogrammes: e.target.value})}>
+                  {availableProgrammes.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Status</label>
+                  <select className="ibes-input" value={editingApp.status} onChange={(e) => setEditingApp({...editingApp, status: e.target.value})}>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Assigned Leader</label>
+                  <input type="text" className="ibes-input" value={editingApp.assignedLeader || ""} onChange={(e) => setEditingApp({...editingApp, assignedLeader: e.target.value})} placeholder="None" />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                <button type="button" onClick={() => setEditingApp(null)} style={{ padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
+                <button type="submit" style={{ padding: '10px 16px', background: 'var(--ibes-navy)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 📊 Additional Visualization Hint */}
       <div style={{ backgroundColor: '#f8fafc', padding: '40px', borderRadius: '20px', border: '2px dashed #e2e8f0', textAlign: 'center' }}>

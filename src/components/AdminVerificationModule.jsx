@@ -9,11 +9,25 @@ const DataRow = ({ label, value }) => (
   </div>
 );
 
-const AdminVerificationModule = ({ applications, setApplications, initialTab = "new" }) => {
+const AdminVerificationModule = ({ applications, setApplications, leaders = [], initialTab = "new", verifyAppId, setVerifyAppId }) => {
   const [viewingApp, setViewingApp] = useState(null);
   const [selectedLeader, setSelectedLeader] = useState("");
   const [notification, setNotification] = useState("");
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  React.useEffect(() => {
+    if (verifyAppId) {
+      const app = applications.find(a => a.id === verifyAppId);
+      if (app) {
+        setViewingApp(app);
+        if (app.status === 'rejected' || app.currentStep === 4) setActiveTab('confirmed');
+        else if (app.currentStep === 3) setActiveTab('forwarded');
+        else setActiveTab('new');
+        
+        if (setVerifyAppId) setVerifyAppId(null);
+      }
+    }
+  }, [verifyAppId, applications, setVerifyAppId]);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   React.useEffect(() => {
@@ -103,6 +117,19 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
         setNotification("");
       }, 3500);
     }
+  };
+
+  const handleDirectApprove = (id) => {
+    setApplications((prev) =>
+      prev.map((app) =>
+        app.id === id ? { ...app, currentStep: 4, status: "approved" } : app
+      )
+    );
+    setNotification("✅ Application directly approved!");
+    setTimeout(() => {
+      setViewingApp(null);
+      setNotification("");
+    }, 2500);
   };
 
   const handleReject = (id) => {
@@ -249,7 +276,27 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
             )}
 
              {/* Action Routing Matrix */}
-             <div style={{ padding: '32px', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+             {viewingApp.applicationType === 'Module Leader' ? (
+               <div style={{ padding: '32px', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                   <ShieldCheck size={28} color="#059669" />
+                   <h3 style={{ margin: 0, color: '#0f172a', fontSize: '18px' }}>Approve Leader Application</h3>
+                 </div>
+                 <p style={{ margin: 0, color: '#475569', fontSize: '14px' }}>
+                   Verify and directly approve this module leader application.
+                 </p>
+                 {notification && (
+                   <div className="fade-in" style={{ padding: '16px', borderRadius: '8px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                     {notification}
+                   </div>
+                 )}
+                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px' }}>
+                   <button type="button" onClick={() => handleReject(viewingApp.id)} style={{ padding: '12px 24px', backgroundColor: 'transparent', border: '1px solid var(--ibes-red)', color: 'var(--ibes-red)', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }}>Reject Application</button>
+                   <button type="button" onClick={() => handleDirectApprove(viewingApp.id)} style={{ padding: '12px 24px', backgroundColor: '#059669', border: 'none', color: 'white', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }}>Approve & Grant Privileges</button>
+                 </div>
+               </div>
+             ) : (
+               <div style={{ padding: '32px', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                  <ShieldCheck size={28} color="var(--ibes-navy)" />
                  <h3 style={{ margin: 0, color: 'var(--ibes-navy-dark)', fontSize: '18px' }}>Route Application to Programme Leader</h3>
@@ -267,9 +314,13 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: 'white', color: '#0f172a' }}
                  >
                    <option value="" disabled>-- Internal Routing Destination --</option>
-                   {getLeadersForProgramme(viewingApp.ibesprogrammes || viewingApp.ibesProgrammes).map(leader => (
-                     <option key={leader} value={leader}>{leader}</option>
-                   ))}
+                   {(() => {
+                     const filtered = getLeadersForProgramme(viewingApp.ibesprogrammes || viewingApp.ibesProgrammes);
+                     const list = filtered.length > 0 ? filtered : leaders.map(l => l.name);
+                     return list.map(leader => (
+                       <option key={leader} value={leader}>{leader}</option>
+                     ));
+                   })()}
                  </select>
                </div>
                
@@ -305,6 +356,7 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
                  </button>
                </div>
              </div>
+             )}
 
           </div>
         </div>
@@ -371,7 +423,7 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
                         onClick={() => setViewingApp(app)}
                         style={{ backgroundColor: 'white', border: '1px solid #cbd5e1', color: 'var(--ibes-navy)', padding: '6px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}
                       >
-                        Inspect Full File
+                        View
                       </button>
                     </div>
                   </div>
@@ -399,7 +451,7 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
                   <div key={app.id} style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #f1f5f9' }}>
                     <div style={{ flex: '1.5' }}>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#0f172a', fontWeight: '600' }}>{app.fullName || 'Unnamed'}</h4>
-                      <button onClick={() => setViewingApp(app)} style={{ background: 'none', border: 'none', color: '#2563eb', padding: 0, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' }}>View Locked File</button>
+                      <button onClick={() => setViewingApp(app)} style={{ background: 'none', border: 'none', color: '#2563eb', padding: 0, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' }}>View</button>
                     </div>
                     <div style={{ flex: '1', color: '#0f172a', fontWeight: '500', fontSize: '14px' }}>{app.assignedLeader}</div>
                     <div style={{ flex: '1', textAlign: 'right' }}>
@@ -430,7 +482,7 @@ const AdminVerificationModule = ({ applications, setApplications, initialTab = "
                   <div key={app.id} style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #f1f5f9', backgroundColor: app.status === 'rejected' ? '#fef2f2' : 'white' }}>
                     <div style={{ flex: '1.5' }}>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#0f172a', fontWeight: '600' }}>{app.fullName}</h4>
-                      <button onClick={() => setViewingApp(app)} style={{ background: 'none', border: 'none', color: '#2563eb', padding: 0, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' }}>View Historical File</button>
+                      <button onClick={() => setViewingApp(app)} style={{ background: 'none', border: 'none', color: '#2563eb', padding: 0, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' }}>View</button>
                     </div>
                     <div style={{ flex: '1', color: '#475569', fontSize: '13px' }}>{app.assignedLeader || "SysAdmin"}</div>
                     <div style={{ flex: '1', textAlign: 'right' }}>

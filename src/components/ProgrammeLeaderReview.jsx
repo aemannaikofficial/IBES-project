@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CaretLeft, CheckCircle, DownloadSimple, UserCheck, Bell, SignOut, DotsThree, Trash, EnvelopeSimple, ChartPie, ClipboardText, HourglassMedium, XCircle, ArrowRight, MagnifyingGlass, FileText, UserCircle } from '@phosphor-icons/react';
-import { generateTutorApprovalPDFs } from '../utils/pdfGenerator';
+import { generateTutorApprovalPDFs, generateTutorApprovalPDFBlob } from '../utils/pdfGenerator';
 
 const DataRow = ({ label, value }) => (
   <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '16px', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
@@ -54,15 +54,68 @@ const ProgrammeLeaderReview = ({ applications, setApplications, userRole, userNa
 
       if (!response.ok) throw new Error("Admin notification failed.");
 
-      // 📄 Automated PDF Generation logic for Tutors
-      if (decision === 'approve' && viewingApp.applicationType === 'Teacher Applicant') {
-        setNotification(`📄 Generating Official Approval Copies...`);
+      // 📨 Trigger PDF email distribution on approval
+      const isTeacherApp = viewingApp.applicationType === 'Teacher Applicant' || 
+                          viewingApp.applicationType === 'Teacher' || 
+                          viewingApp.applicationType === 'Teacher Applicant Form';
+
+      if (decision === 'approve' && isTeacherApp) {
+        setNotification(`📨 Distributing approval documents via email...`);
         try {
-          await generateTutorApprovalPDFs(viewingApp, userName);
-          setNotification(`✅ Approved & 3 PDF Records Generated!`);
-        } catch (pdfErr) {
-          console.error("PDF Generation Error:", pdfErr);
-          setNotification(`⚠️ Approved, but PDF generation failed. Check console.`);
+          // Generate the Tutor's PDF copy
+          let pdfBase64 = null;
+          try {
+            pdfBase64 = await generateTutorApprovalPDFBlob(viewingApp, userName || "Programme Leader", "TUTOR");
+          } catch (pdfGenErr) {
+            console.error("Tutor PDF blob generation failed:", pdfGenErr);
+          }
+
+          // Generate the Learning Centre's PDF copy
+          let pdfBase64LC = null;
+          try {
+            pdfBase64LC = await generateTutorApprovalPDFBlob(viewingApp, userName || "Programme Leader", "LEARNING CENTRE");
+          } catch (pdfGenErr) {
+            console.error("Learning Centre PDF blob generation failed:", pdfGenErr);
+          }
+
+          const distResponse = await fetch(
+            `${import.meta.env.PROD ? '' : 'http://localhost:5000'}/api/distribute-approval-pdfs`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                app: {
+                  fullName: viewingApp.fullName,
+                  workEmail: viewingApp.workEmail || viewingApp.email || viewingApp.personalEmail,
+                  gender: viewingApp.gender,
+                  contactNumber: viewingApp.contactNumber,
+                  homeAddress: viewingApp.homeAddress,
+                  occupation: viewingApp.occupation,
+                  employer: viewingApp.employer,
+                  approvedCentre: viewingApp.approvedCentre,
+                  ibesprogrammes: viewingApp.ibesprogrammes || viewingApp.ibesProgrammes,
+                  ibesModules: viewingApp.ibesModules,
+                  teachingEvidence: viewingApp.teachingEvidence,
+                  researchActivity: viewingApp.researchActivity || viewingApp.researchEvidence,
+                  signature: viewingApp.signature,
+                  applicationType: viewingApp.applicationType
+                },
+                leaderName: userName || "Programme Leader",
+                pdfBase64,
+                pdfBase64LC
+              })
+            }
+          );
+          const distData = await distResponse.json();
+          
+          if (distData.success) {
+            setNotification(`✅ Approved! The Tutor has been notified via email with the PDF attached.`);
+          } else {
+            setNotification(`✅ Approved. Email distribution encountered an issue — check server logs.`);
+          }
+        } catch (distErr) {
+          console.error("PDF Distribution Error:", distErr);
+          setNotification(`✅ Approved locally. Email distribution failed — check network.`);
         }
       } else {
         setNotification(`✅ Admin notified of your ${decision === 'approve' ? 'Approval' : 'Rejection'}!`);
@@ -89,8 +142,7 @@ const ProgrammeLeaderReview = ({ applications, setApplications, userRole, userNa
         )
       );
 
-      setNotification(`✅ Admin notified of your ${decision === 'approve' ? 'Approval' : 'Rejection'}!`);
-      setTimeout(() => { setViewingApp(null); setNotification(""); }, 2500);
+      setTimeout(() => { setViewingApp(null); setNotification(""); }, 4500);
 
     } catch (error) {
       console.error("Admin Notification Error:", error);
@@ -470,10 +522,17 @@ const ProgrammeLeaderReview = ({ applications, setApplications, userRole, userNa
 
 // 🏛️ Registry Management Engine (Leader Portal Edition)
 const RegistryManagementView = ({ type, applications, registryFilter, setRegistryFilter, setViewingApp, handleDelete, userName }) => {
-  const filteredApps = applications.filter(app => 
-    app.applicationType === type && 
-    (app.assignedLeader === userName || !app.assignedLeader) // Leader see their own or unassigned modules
-  );
+  const [expandedId, setExpandedId] = useState(null);
+
+  const filteredApps = applications.filter(app => {
+    const isTargetType = type === "Teacher Applicant" 
+      ? (app.applicationType === "Teacher Applicant" || app.applicationType === "Teacher" || app.applicationType === "Teacher Applicant Form")
+      : (app.applicationType === type);
+    
+    return isTargetType && (app.assignedLeader === userName || !app.assignedLeader);
+  });
+
+  const availableProgrammes = Array.from(new Set(filteredApps.map(app => app.ibesprogrammes || app.ibesProgrammes).filter(Boolean)));
   
   const total = filteredApps.length;
   const pendingCount = filteredApps.filter(app => app.status === 'pending').length;
@@ -481,8 +540,7 @@ const RegistryManagementView = ({ type, applications, registryFilter, setRegistr
   const approvedCount = filteredApps.filter(app => app.status === 'approved').length;
 
   const displayApps = filteredApps.filter(app => {
-    if (registryFilter === 'all') return true;
-    return app.status === registryFilter;
+    return registryFilter === 'all' || app.status === registryFilter;
   });
 
   const cardStyle = (filter) => ({
@@ -535,6 +593,7 @@ const RegistryManagementView = ({ type, applications, registryFilter, setRegistr
         </div>
       </div>
 
+
       {/* 📋 Registry Table */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
@@ -561,26 +620,73 @@ const RegistryManagementView = ({ type, applications, registryFilter, setRegistr
               </thead>
               <tbody>
                 {displayApps.map((app) => (
-                  <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '16px 24px' }}>
-                      <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '14px' }}>{app.fullName}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{app.dateSubmitted}</div>
-                    </td>
-                    <td style={{ padding: '16px 24px' }}>
-                      <span style={{ 
-                        padding: '4px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase',
-                        backgroundColor: app.status === 'pending' ? '#fffbeb' : (app.status === 'rejected' ? '#fef2f2' : '#f0fdf4'),
-                        color: app.status === 'pending' ? '#b45309' : (app.status === 'rejected' ? '#b91c1c' : '#15803d'),
-                        border: '1px solid currentColor'
-                      }}>{app.status}</span>
-                    </td>
-                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setViewingApp(app)} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>View</button>
-                        <button onClick={() => handleDelete(app.id)} style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
+                  <React.Fragment key={app.id}>
+                    <tr style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: expandedId === app.id ? '#f8fafc' : 'white' }}>
+                      <td style={{ padding: '16px 24px' }}>
+                        <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '14px' }}>{app.fullName}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>{app.dateSubmitted}</div>
+                      </td>
+                      <td style={{ padding: '16px 24px' }}>
+                        <span style={{ 
+                          padding: '4px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase',
+                          backgroundColor: app.status === 'pending' ? '#fffbeb' : (app.status === 'rejected' ? '#fef2f2' : '#f0fdf4'),
+                          color: app.status === 'pending' ? '#b45309' : (app.status === 'rejected' ? '#b91c1c' : '#15803d'),
+                          border: '1px solid currentColor'
+                        }}>{app.status}</span>
+                      </td>
+                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          {/* Full Form button removed as requested */}
+                          {(app.applicationType === 'Teacher Applicant' || app.applicationType === 'Teacher' || app.applicationType === 'Teacher Applicant Form') && app.status === 'approved' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await generateTutorApprovalPDFs(app, userName);
+                                } catch (err) {
+                                  console.error("On-demand download error:", err);
+                                  alert("PDF generation failed. Check console.");
+                                }
+                              }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                backgroundColor: 'var(--ibes-navy)', color: 'white',
+                                border: 'none', padding: '8px 14px', borderRadius: '8px',
+                                fontWeight: '600', fontSize: '13px', cursor: 'pointer',
+                                transition: 'opacity 0.2s'
+                              }}
+                              title="Download Approval PDFs"
+                            >
+                              <DownloadSimple size={16} weight="bold" /> Download PDFs
+                            </button>
+                          )}
+                          <button onClick={() => setViewingApp(app)} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>View</button>
+                          <button onClick={() => handleDelete(app.id)} style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedId === app.id && (
+                      <tr>
+                        <td colSpan="3" style={{ padding: '24px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#0f172a' }}>Personal Details</h4>
+                              <DataRow label="Gender" value={app.gender} />
+                              <DataRow label="Contact" value={app.contactNumber} />
+                              <DataRow label="Email" value={app.workEmail} />
+                              <DataRow label="Address" value={app.homeAddress} />
+                            </div>
+                            <div>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#0f172a' }}>Academic Details</h4>
+                              <DataRow label="Programme" value={app.ibesprogrammes || app.ibesProgrammes} />
+                              <DataRow label="Modules" value={app.ibesModules} />
+                              <DataRow label="Employer" value={app.employer} />
+                              <DataRow label="Occupation" value={app.occupation} />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

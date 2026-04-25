@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCircle, GraduationCap, ArrowLeft } from "@phosphor-icons/react";
+import { UserCircle, GraduationCap, ArrowLeft, UsersThree } from "@phosphor-icons/react";
 
 const ApplicationChoice = ({ setActiveView }) => {
   return (
@@ -31,6 +31,15 @@ const ApplicationChoice = ({ setActiveView }) => {
             <h3>Module Leader</h3>
             <p>Supervisor / Academic Appointment Application</p>
             <div className="choice-btn red-btn">Select Role</div>
+          </div>
+
+          <div className="choice-card clickable" onClick={() => setActiveView('generalTutorForm')}>
+            <div className="choice-icon blue" style={{ backgroundColor: '#f0f9ff', color: '#0369a1' }}>
+              <UsersThree weight="duotone" size={64} />
+            </div>
+            <h3>General Tutor</h3>
+            <p>Application for All Registered Programmes</p>
+            <div className="choice-btn" style={{ backgroundColor: '#0369a1' }}>Select Role</div>
           </div>
         </div>
       </div>
@@ -85,8 +94,8 @@ const ApplicationChoice = ({ setActiveView }) => {
 
         .choice-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 32px;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
           width: 100%;
         }
 

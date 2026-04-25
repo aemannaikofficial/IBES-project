@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { UserPlus, Trash, GraduationCap, EnvelopeSimple, UsersThree, ShieldCheck } from "@phosphor-icons/react";
+import { UserPlus, Trash, GraduationCap, EnvelopeSimple, UsersThree, ShieldCheck, PencilSimple } from "@phosphor-icons/react";
 
-const AdminLeaderManagement = ({ leaders, setLeaders }) => {
+const AdminLeaderManagement = ({ leaders, setLeaders, programmes = [] }) => {
   const [newLeader, setNewLeader] = useState({
     name: "",
     email: "",
-    programmes: []
+    programmes: [],
+    password: ""
   });
   const [isAdding, setIsAdding] = useState(false);
+  const [editingLeader, setEditingLeader] = useState(null);
   const [notification, setNotification] = useState("");
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
@@ -19,31 +21,29 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
 
   const isMobile = windowWidth <= 768;
 
-  const availableProgrammes = [
-    "Doctor of Business Administration (DBA) Mixed Mode",
-    "Doctor of Business Administration by (Research)",
-    "Doctor of Education (EdD) Mixed Mode",
-    "Doctor of Education (EdD) Research Mode",
-    "Mastère TESOL",
-    "Master of Business Administration",
-    "Master of Education - M.Ed",
-    "Bachelors of Arts(Hons) in Business Administration",
-    "Bachelor of Arts in Education",
-    "Bachelor of Science (Hons) in Computer Science"
-  ];
 
-  const handleToggleProgramme = (prog) => {
-    setNewLeader(prev => ({
-      ...prev,
-      programmes: prev.programmes.includes(prog)
-        ? prev.programmes.filter(p => p !== prog)
-        : [...prev.programmes, prog]
-    }));
+
+  const handleToggleProgramme = (prog, isEditing = false) => {
+    if (isEditing) {
+      setEditingLeader(prev => ({
+        ...prev,
+        programmes: prev.programmes.includes(prog)
+          ? prev.programmes.filter(p => p !== prog)
+          : [...prev.programmes, prog]
+      }));
+    } else {
+      setNewLeader(prev => ({
+        ...prev,
+        programmes: prev.programmes.includes(prog)
+          ? prev.programmes.filter(p => p !== prog)
+          : [...prev.programmes, prog]
+      }));
+    }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (!newLeader.name || !newLeader.email || newLeader.programmes.length === 0) {
+    if (!newLeader.name || !newLeader.email || newLeader.programmes.length === 0 || !newLeader.password) {
       alert("Please fill in all fields and assign at least one programme.");
       return;
     }
@@ -53,20 +53,63 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
       return;
     }
 
-    setLeaders(prev => [...prev, newLeader]);
-    setNotification(`✅ ${newLeader.name} has been successfully registered.`);
+    const password = newLeader.password;
+    const leaderWithPass = { ...newLeader };
+
+    setLeaders(prev => [...prev, leaderWithPass]);
+    setNotification(`✅ ${newLeader.name} registered successfully.`);
     
-    // Clear and hide form
-    setNewLeader({ name: "", email: "", programmes: [] });
+    try {
+      await fetch(`${import.meta.env.PROD ? '' : 'http://localhost:5000'}/api/send-leader-credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newLeader.name, email: newLeader.email, password })
+      });
+    } catch (err) {
+      console.error("Credential email failed", err);
+    }
+
+    setNewLeader({ name: "", email: "", programmes: [], password: "" });
     setIsAdding(false);
 
-    setTimeout(() => setNotification(""), 3000);
+    setTimeout(() => setNotification(""), 10000);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    const updatedLeader = { ...editingLeader };
+    let passMsg = "";
+
+    if (updatedLeader.newPassword) {
+      updatedLeader.password = updatedLeader.newPassword;
+      try {
+        await fetch(`${import.meta.env.PROD ? '' : 'http://localhost:5000'}/api/send-leader-credentials`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: updatedLeader.name, email: updatedLeader.email, password: updatedLeader.newPassword })
+        });
+        passMsg = " and new credentials emailed";
+      } catch (err) {
+        console.error("Credential email failed", err);
+      }
+    }
+    delete updatedLeader.newPassword;
+
+    setLeaders(prev => prev.map(l => l.email === updatedLeader.email ? updatedLeader : l));
+    setNotification(`✅ ${updatedLeader.name} has been successfully updated${passMsg}.`);
+    setEditingLeader(null);
+    setTimeout(() => setNotification(""), 4000);
   };
 
   const handleDelete = (email) => {
     if (window.confirm("Are you sure you want to remove this Programme Leader?")) {
       setLeaders(prev => prev.filter(l => l.email !== email));
     }
+  };
+
+  const handleEdit = (leader) => {
+    setEditingLeader({ ...leader, newPassword: "" });
+    setIsAdding(false);
   };
 
   return (
@@ -84,7 +127,7 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
           </div>
         </div>
         <button 
-          onClick={() => setIsAdding(!isAdding)}
+          onClick={() => { setIsAdding(!isAdding); setEditingLeader(null); }}
           style={{ width: isMobile ? '100%' : 'auto', backgroundColor: isAdding ? '#f1f5f9' : 'var(--ibes-navy)', color: isAdding ? '#475569' : 'white', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontSize: '14px' }}
         >
           {isAdding ? "Cancel Registration" : <><UserPlus weight="bold" /> Register Leader</>}
@@ -125,11 +168,32 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
                 required 
               />
             </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: isMobile ? 'span 1' : 'span 2' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>Access Password <span style={{ color: 'var(--ibes-red)' }}>*</span></label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                  type="text" className="ibes-input" 
+                  value={newLeader.password} 
+                  onChange={(e) => setNewLeader(prev => ({...prev, password: e.target.value}))}
+                  placeholder="Enter or auto-generate password" 
+                  required 
+                  style={{ flex: 1 }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setNewLeader(prev => ({ ...prev, password: Math.random().toString(36).slice(2, 12) }))}
+                  style={{ backgroundColor: '#eff6ff', color: 'var(--ibes-navy)', border: '1px solid #bfdbfe', padding: '0 16px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Generate Auto
+                </button>
+              </div>
+            </div>
             
             <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
               <label style={{ display: 'block', marginBottom: '12px', fontSize: '14px', fontWeight: '600', color: '#475569' }}>Assign Authorized Programmes</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px' }}>
-                {availableProgrammes.map(prog => (
+                {programmes.map(prog => (
                   <label key={prog} style={{ 
                     display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', 
                     borderRadius: '8px', border: '1px solid #e2e8f0', cursor: 'pointer',
@@ -161,6 +225,7 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
         </div>
       )}
 
+
       {/* 📋 Leaders List */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc' }}>
@@ -178,8 +243,99 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
             </thead>
             <tbody>
               {leaders.map((leader, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }}>
-                  <td style={{ padding: '16px 24px' }}>
+                editingLeader?.email === leader.email ? (
+                  <tr key={`edit-${idx}`} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                    <td colSpan="3" style={{ padding: '24px' }}>
+                      <div className="fade-in">
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
+                          <PencilSimple size={20} color="var(--ibes-red)" /> Update Leader Privileges
+                        </h3>
+                        
+                        <form onSubmit={handleUpdate} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Leader Full Name & Title</label>
+                            <input 
+                              type="text" className="ibes-input" 
+                              value={editingLeader.name} 
+                              onChange={(e) => setEditingLeader(prev => ({...prev, name: e.target.value}))}
+                              required 
+                            />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Official Academic Email</label>
+                            <input 
+                              type="email" className="ibes-input" 
+                              value={editingLeader.email} 
+                              readOnly
+                              style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                            />
+                          </div>
+                          
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: isMobile ? 'span 1' : 'span 2' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Update Password (Optional)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="text" className="ibes-input" 
+                                value={editingLeader.newPassword || ""} 
+                                onChange={(e) => setEditingLeader(prev => ({...prev, newPassword: e.target.value}))}
+                                placeholder="Leave blank to keep existing password" 
+                                style={{ flex: 1 }}
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => setEditingLeader(prev => ({ ...prev, newPassword: Math.random().toString(36).slice(2, 12) }))}
+                                style={{ backgroundColor: '#eff6ff', color: 'var(--ibes-navy)', border: '1px solid #bfdbfe', padding: '0 12px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px' }}
+                              >
+                                Auto
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Assign Authorized Programmes</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
+                              {programmes.map(prog => (
+                                <label key={prog} style={{ 
+                                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', 
+                                  borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer',
+                                  backgroundColor: editingLeader.programmes.includes(prog) ? '#eff6ff' : 'white',
+                                  borderColor: editingLeader.programmes.includes(prog) ? 'var(--ibes-navy)' : '#e2e8f0',
+                                  transition: 'all 0.2s', fontSize: '12px'
+                                }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={editingLeader.programmes.includes(prog)} 
+                                    onChange={() => handleToggleProgramme(prog, true)}
+                                    style={{ accentColor: 'var(--ibes-navy)' }}
+                                  />
+                                  {prog}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2', display: 'flex', gap: '12px', marginTop: '8px' }}>
+                            <button 
+                              type="button" 
+                              onClick={() => setEditingLeader(null)}
+                              style={{ flex: 1, backgroundColor: '#f1f5f9', color: '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              type="submit" 
+                              style={{ flex: 2, backgroundColor: 'var(--ibes-navy)', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                            >
+                              Save Changes
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }}>
+                    <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--ibes-red)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px' }}>
                         {leader.name.charAt(0)}
@@ -207,16 +363,25 @@ const AdminLeaderManagement = ({ leaders, setLeaders }) => {
                     </div>
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    <button 
-                      onClick={() => handleDelete(leader.email)}
-                      style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', transition: 'all 0.2s' }}
-                      onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
-                      onMouseOut={(e) => e.currentTarget.style.color = '#cbd5e1'}
-                    >
-                      <Trash size={18} />
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button 
+                        onClick={() => handleEdit(leader)}
+                        style={{ background: '#f0fdf4', color: '#059669', border: '1px solid #dcfce3', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                        title="Edit Leader"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(leader.email)}
+                        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                        title="Delete Leader"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
+                )
               ))}
             </tbody>
           </table>

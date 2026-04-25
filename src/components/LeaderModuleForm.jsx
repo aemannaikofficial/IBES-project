@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { UploadSimple, UserCircle, Briefcase, GraduationCap, FileText } from "@phosphor-icons/react";
 
-const LeaderModuleForm = ({ onSubmit }) => {
+const LeaderModuleForm = ({ onSubmit, programmes = [] }) => {
   const formRef = useRef(null);
   
   const [formData, setFormData] = useState({
@@ -178,11 +178,9 @@ const LeaderModuleForm = ({ onSubmit }) => {
               <label>IBES Programme <span className="req">*</span></label>
               <select className="ibes-input" name="ibesProgrammes" value={formData.ibesProgrammes} onChange={handleChange} required>
                 <option value="" disabled hidden>-- Select Official Programme --</option>
-                <option value="Doctor of Business Administration (DBA)">Doctor of Business Administration (DBA)</option>
-                <option value="Doctor of Education (EdD)">Doctor of Education (EdD)</option>
-                <option value="Master of Business Administration">Master of Business Administration</option>
-                <option value="Bachelor of Arts - Business">Bachelors of Arts - Business</option>
-                <option value="Bachelor of Science - CS">Bachelor of Science - Computer Science</option>
+                {programmes.map(prog => (
+                  <option key={prog} value={prog}>{prog}</option>
+                ))}
               </select>
             </div>
             <div className="form-group">

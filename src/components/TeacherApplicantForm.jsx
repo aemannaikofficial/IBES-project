@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { UploadSimple, UserCircle, Briefcase, GraduationCap, FileText, PenNib } from "@phosphor-icons/react";
 import SignatureCanvas from "react-signature-canvas";
 
-const TeacherApplicantForm = ({ onSubmit }) => {
+const TeacherApplicantForm = ({ onSubmit, leaders, isGeneral, programmes = [] }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const formRef = useRef(null);
   const sigCanvas = useRef(null);
@@ -16,6 +16,12 @@ const TeacherApplicantForm = ({ onSubmit }) => {
     researchActivity: "", professionalMembership: "",
     profilePicture: null, resumeCV: [], idPassport: [], certificates: [], transcripts: [], signature: null,
   });
+  
+  useEffect(() => {
+    if (isGeneral) {
+      setFormData(prev => ({ ...prev, ibesprogrammes: "General / All Programmes" }));
+    }
+  }, [isGeneral]);
 
   const [fileNames, setFileNames] = useState({
     profilePicture: "", resumeCV: "", idPassport: "", certificates: "", transcripts: "",
@@ -76,7 +82,7 @@ const TeacherApplicantForm = ({ onSubmit }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (sigCanvas.current && sigCanvas.current.isEmpty()) {
       alert("Please provide an e-signature before submitting.");
@@ -86,6 +92,28 @@ const TeacherApplicantForm = ({ onSubmit }) => {
     if (sigCanvas.current) {
       finalData.signature = sigCanvas.current.getCanvas().toDataURL("image/png");
     }
+
+    // Trigger Distribution Notification (Change 5)
+    const progLeaders = leaders.filter(l => l.programmes.includes(formData.ibesprogrammes));
+    const recipientEmails = (progLeaders.length > 0 ? progLeaders : leaders).map(l => l.email);
+    
+    // Always include Learning Center
+    recipientEmails.push("learningcenter@ibes.fr");
+
+    try {
+      await fetch(`${import.meta.env.PROD ? '' : 'http://localhost:5000'}/api/notify-form-distributed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: formData.fullName,
+          programmeName: formData.ibesprogrammes,
+          recipientEmails: recipientEmails
+        })
+      });
+    } catch (err) {
+      console.error("Distribution notification failed", err);
+    }
+
     onSubmit(finalData);
   };
 
@@ -226,16 +254,10 @@ const TeacherApplicantForm = ({ onSubmit }) => {
                   <label>IBES Programme <span className="req">*</span></label>
                   <select className="ibes-input" name="ibesprogrammes" value={formData.ibesprogrammes} onChange={handleChange} required style={{ cursor: 'pointer' }}>
                     <option value="" disabled hidden>-- Select Official Programme --</option>
-                    <option value="Doctor of Business Administration (DBA) Mixed Mode">Doctor of Business Administration (DBA) Mixed Mode</option>
-                    <option value="Doctor of Business Administration by (Research)">Doctor of Business Administration by (Research)</option>
-                    <option value="Doctor of Education (EdD) Mixed Mode">Doctor of Education (EdD) Mixed Mode</option>
-                    <option value="Doctor of Education (EdD) Research Mode">Doctor of Education (EdD) Research Mode</option>
-                    <option value="Mastère TESOL">Mastère TESOL</option>
-                    <option value="Master of Business Administration">Master of Business Administration</option>
-                    <option value="Master of Education - M.Ed">Master of Education - M.Ed</option>
-                    <option value="Bachelors of Arts(Hons) in Business Administration">Bachelors of Arts(Hons) in Business Administration</option>
-                    <option value="Bachelor of Arts in Education">Bachelor of Arts in Education</option>
-                    <option value="Bachelor of Science (Hons) in Computer Science">Bachelor of Science (Hons) in Computer Science</option>
+                    <option value="General / All Programmes">General / All Programmes</option>
+                    {programmes.map(prog => (
+                      <option key={prog} value={prog}>{prog}</option>
+                    ))}
                   </select>
                 </div>
 
